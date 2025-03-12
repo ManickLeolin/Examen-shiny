@@ -13,7 +13,6 @@
 
 
 
-library(usethis)
 
 library(shiny)
 
