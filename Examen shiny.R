@@ -1,4 +1,3 @@
- # Valeurs uniques dans la colonne "gender"
 library(shiny)
 library(dplyr)
 library(ggplot2)
@@ -6,97 +5,72 @@ library(DT)
 library(bslib)
 library(thematic)
 library(plotly)
+
+data("diamonds")
+
 thematic_shiny()
-data(starwars)
-head(starwars)  # Pour voir les 6 premières lignes du dataset
-unique(starwars$height)  # Valeurs uniques dans la colonne "height"
-unique(starwars$gender)
+
 ui <- fluidPage(
   theme = bs_theme(
     version = 5,
-    bootswatch = "minty"
+    bootswatch = "quartz"
   ),
-  titlePanel("Star War Characters"),
+  titlePanel("Exploration des Diamants"),
   sidebarLayout(
     sidebarPanel(
-      h2("My app from scratch"),
+      h2("Filtrer par Prix"),
       sliderInput(
-        inputId = "taille",
-        label = "Height of character",
-        min = 0,
-        max = 250,
-        value = 30
+        inputId = "Price",
+        label = "Prix des Diamants",
+        min = min(diamonds$price),
+        max = max(diamonds$price),
+        value = c(min(diamonds$price), 5000)
       ),
-      selectInput(
-        inputId = "gender",
-        label = "Sex of character",
-        choices = c("masculine", "feminine", "other"),  
-        selected = "masculine"
-      ), 
       actionButton(
         inputId = "bouton",
-        label = "Click me"
+        label = "Appliquer le filtre"
       )
     ),
     mainPanel(
-      plotOutput(outputId = "StarWarPlot"),
-      DTOutput(outputId = "StarWarTable")
+      plotlyOutput(outputId = "DiamondPlot"), 
+      DTOutput(outputId = "DiamondTable")
     )
   )
 )
 
 server <- function(input, output) {
   
-  # Déclaration des valeurs réactives
-  rv <- reactiveValues(starwars_filter = starwars)
-  
-  # Filtrage dynamique selon input$taille et input$gender
-  observeEvent(c(input$taille, input$gender), {
-    rv$starwars_filter <- starwars %>%
-      filter(height > input$taille)  %>%
-      filter(ifelse(input$gender == "other", TRUE, gender == input$gender)) # ✅ Corriger le filtre
+  # Filtrage réactif basé sur le prix uniquement
+  filtered_data <- reactive({
+    diamonds %>%
+      filter(price >= input$Price[1], price <= input$Price[2])
   })
   
-  # Affichage d'un texte statique
-  output$starWarTitle <- renderText({
-    "Coucou"
+  # Table interactive
+  output$DiamondTable <- renderDT({
+    req(filtered_data()) 
+    datatable(filtered_data())
   })
   
-  # Table interactive avec DT
-  output$StarWarTable <- renderDT({
-    req(rv$starwars_filter) # ✅ Empêche l'affichage si `rv$starwars_filter` est vide
-    rv$starwars_filter
-  })
-  
-  observe({
-    message(paste("Nombre de lignes filtrées:", nrow(rv$starwars_filter)))
-  })
-  
-  # Notification lors du clic sur un bouton (si bouton existe dans l'UI)
-  observeEvent(input$bouton, {
-    message("Vous avez cliqué") # ✅ Correction orthographique
-  })
-  
-  # Notification lors du changement de `input$taille`
-  observeEvent(input$taille, {
-    showNotification("Vous avez changé la taille sélectionnée") 
-  })
-  
-  # Graphique des tailles filtrées
-  output$StarWarPlot <- renderPlot({
-    req(rv$starwars_filter) 
-    rv$starwars_filter |> 
-      ggplot(aes(x = height)) + 
-      geom_histogram(
-        binwidth = 10,
-        fill = "white",
-        color = "black" 
-      ) +
+  # Graphique interactif avec plotly
+  output$DiamondPlot <- renderPlotly({
+    req(filtered_data())
+    
+    p <- ggplot(filtered_data(), aes(x = carat, y = price, color = cut)) +
+      geom_point(alpha = 0.5) +
       labs(
-        title = "Distribution des tailles sélectionnées" 
-      )
+        title = "Relation entre Carat et Prix",
+        x = "Carats",
+        y = "Prix ($)"
+      ) +
+      theme_minimal()
+    
+    ggplotly(p)
   })
 }
 
 shinyApp(ui = ui, server = server)
+
+
+
 
