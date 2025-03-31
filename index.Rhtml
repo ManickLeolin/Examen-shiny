@@ -1,17 +1,73 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shiny avec WebR</title>
-    <script type="module">
-        import { WebR } from "https://webr.r-wasm.org/latest/webr.mjs";
-        const webr = new WebR();
-        await webr.init();
-    </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exploration des Diamants</title>
+  <script type="module">
+      import { WebR } from "https://webr.r-wasm.org/latest/webr.mjs";
+      const webr = new WebR();
+      await webr.init();
+  </script>
 </head>
 <body>
-    <h1>Bienvenue sur mon application Shiny Live</h1>
-    <p>Shiny tourne ici sans serveur ! 🎉</p>
+  <h1>Exploration des Diamants avec Shiny Live</h1>
+  <div id="shiny-app"></div>
+
+  <script type="module">
+    import { WebR } from "https://webr.r-wasm.org/latest/webr.mjs";
+
+    async function startShiny() {
+      const webr = new WebR();
+      await webr.init();
+
+      await webr.evalR(`
+        library(shiny)
+        library(ggplot2)
+        library(dplyr)
+        library(DT)
+        data("diamonds")
+
+        ui <- fluidPage(
+          titlePanel("Exploration des Diamants"),
+          sidebarLayout(
+            sidebarPanel(
+              sliderInput("Price", "Prix des Diamants", min(diamonds$price), max(diamonds$price), value = c(min(diamonds$price), 5000), step = 100),
+              selectInput("color", "Choisir une couleur", choices = c("Toutes", unique(diamonds$color)), selected = "Toutes")
+            ),
+            mainPanel(
+              plotOutput("DiamondPlot"),
+              DTOutput("DiamondTable")
+            )
+          )
+        )
+
+        server <- function(input, output) {
+          filtered_data <- reactive({
+            data <- diamonds %>%
+              filter(price >= input$Price[1], price <= input$Price[2])
+            if (input$color != "Toutes") {
+              data <- data %>% filter(color == input$color)
+            }
+            return(data)
+          })
+
+          output$DiamondTable <- renderDT({ datatable(filtered_data()) })
+
+          output$DiamondPlot <- renderPlot({
+            ggplot(filtered_data(), aes(x = carat, y = price)) +
+              geom_point(alpha = 0.7, color = "blue") +
+              labs(title = paste("Diamants - Couleur:", input$color), x = "Carats", y = "Prix ($)") +
+              theme_minimal()
+          })
+        }
+
+        shinyApp(ui, server)
+      `);
+    }
+
+    startShiny();
+  </script>
 </body>
 </html>
+
