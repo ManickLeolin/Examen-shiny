@@ -1,73 +1,22 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Exploration des Diamants</title>
-  <script type="module">
-      import { WebR } from "https://webr.r-wasm.org/latest/webr.mjs";
-      const webr = new WebR();
-      await webr.init();
-  </script>
-</head>
-<body>
-  <h1>Exploration des Diamants avec Shiny Live</h1>
-  <div id="shiny-app"></div>
-
-  <script type="module">
-    import { WebR } from "https://webr.r-wasm.org/latest/webr.mjs";
-
-    async function startShiny() {
-      const webr = new WebR();
-      await webr.init();
-
-      await webr.evalR(`
-        library(shiny)
-        library(ggplot2)
-        library(dplyr)
-        library(DT)
-        data("diamonds")
-
-        ui <- fluidPage(
-          titlePanel("Exploration des Diamants"),
-          sidebarLayout(
-            sidebarPanel(
-              sliderInput("Price", "Prix des Diamants", min(diamonds$price), max(diamonds$price), value = c(min(diamonds$price), 5000), step = 100),
-              selectInput("color", "Choisir une couleur", choices = c("Toutes", unique(diamonds$color)), selected = "Toutes")
-            ),
-            mainPanel(
-              plotOutput("DiamondPlot"),
-              DTOutput("DiamondTable")
-            )
-          )
-        )
-
-        server <- function(input, output) {
-          filtered_data <- reactive({
-            data <- diamonds %>%
-              filter(price >= input$Price[1], price <= input$Price[2])
-            if (input$color != "Toutes") {
-              data <- data %>% filter(color == input$color)
-            }
-            return(data)
-          })
-
-          output$DiamondTable <- renderDT({ datatable(filtered_data()) })
-
-          output$DiamondPlot <- renderPlot({
-            ggplot(filtered_data(), aes(x = carat, y = price)) +
-              geom_point(alpha = 0.7, color = "blue") +
-              labs(title = paste("Diamants - Couleur:", input$color), x = "Carats", y = "Prix ($)") +
-              theme_minimal()
-          })
-        }
-
-        shinyApp(ui, server)
-      `);
-    }
-
-    startShiny();
-  </script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exploration des Diamants</title>
+  </head>
+  <body>
+    <div id="shiny-app"></div>
+    <script src="https://cdn.jsdelivr.net/npm/shiny@1.7.1/dist/shiny.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/shiny-live@0.5.0/dist/shiny-live.min.js"></script>
+    <script>
+      ShinyLive.mount({
+        repository: 'https://github.com/ManickLeolin/Examen-shiny',
+        branch: 'main',
+        container: '#shiny-app',
+      });
+    </script>
+  </body>
 </html>
 
