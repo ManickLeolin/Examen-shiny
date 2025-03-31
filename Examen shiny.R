@@ -11,24 +11,26 @@ data("diamonds")
 thematic_shiny()
 
 ui <- fluidPage(
-  theme = bs_theme(
-    version = 5,
-    bootswatch = "quartz"
-  ),
+  theme = bs_theme(version = 5, bootswatch = "quartz"),
   titlePanel("Exploration des Diamants"),
   sidebarLayout(
     sidebarPanel(
-      h2("Filtrer par Prix"),
+      h2("Filtres"),
       sliderInput(
         inputId = "Price",
         label = "Prix des Diamants",
         min = min(diamonds$price),
         max = max(diamonds$price),
-        value = c(min(diamonds$price), 5000)
+        value = c(min(diamonds$price),5000),
+        step = 100,
+        pre = "$",  # Affichage en format monétaire
+        sep = ","
       ),
-      actionButton(
-        inputId = "bouton",
-        label = "Appliquer le filtre"
+      selectInput(
+        inputId = "color",
+        label = "Choisir une couleur",
+        choices = c("Toutes",sort(unique(as.character(diamonds$color)))), 
+        selected = "Toutes"
       )
     ),
     mainPanel(
@@ -38,12 +40,41 @@ ui <- fluidPage(
   )
 )
 
-server <- function(input, output) {
+
+server <- function(input, output, session) {
   
-  # Filtrage réactif basé sur le prix uniquement
+  # Vérifier ce que contient la colonne "color"
+  observe({
+    print(unique(diamonds$color))  # Debugging pour voir les vraies valeurs
+  })
+  # Notification lors du changement de filtre
+  observeEvent(input$Price, {
+    showNotification(
+      paste("Filtrage par prix :", input$Price[1], "à", input$Price[2]),
+      type = "message",
+      duration = 3
+    )
+  })
+  
+  observeEvent(input$color, {
+    showNotification(
+      paste("Couleur sélectionnée :", input$color),
+      type = "message",
+      duration = 3
+    )
+  })
+  
+  
+  # Filtrer les données en fonction du prix et de la couleur
   filtered_data <- reactive({
-    diamonds %>%
+    data <- diamonds %>%
       filter(price >= input$Price[1], price <= input$Price[2])
+    
+    if (input$color != "Toutes") {
+      data <- data %>% filter(color == input$color)  
+    }
+    
+    return(data)
   })
   
   # Table interactive
@@ -52,14 +83,14 @@ server <- function(input, output) {
     datatable(filtered_data())
   })
   
-  # Graphique interactif avec plotly
+  # Graphique interactif
   output$DiamondPlot <- renderPlotly({
     req(filtered_data())
     
-    p <- ggplot(filtered_data(), aes(x = carat, y = price, color = cut)) +
-      geom_point(alpha = 0.5) +
+    p <- ggplot(filtered_data(), aes(x = carat, y = price)) +
+      geom_point(alpha = 0.7, color = "blue") +  
       labs(
-        title = "Relation entre Carat et Prix",
+        title = paste("Diamants - Couleur:", input$color),
         x = "Carats",
         y = "Prix ($)"
       ) +
@@ -70,6 +101,10 @@ server <- function(input, output) {
 }
 
 shinyApp(ui = ui, server = server)
+
+
+
+
 
 
 
